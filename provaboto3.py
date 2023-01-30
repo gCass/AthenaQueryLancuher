@@ -1,12 +1,12 @@
 import boto3
 import configparser
 config = configparser.ConfigParser()
-conf = config.read('conf/aws_data.txt')
-access_key = conf["DEFAULT"]["aws_access_key_id"]
-secret_key = conf["DEFAULT"]["aws_secret_access_key"]
-token = conf["DEFAULT"]["aws_session_token"]
+config.read('conf/aws_data.ini')
+# print(config.sections())
 
-import boto3
+access_key = config["DEFAULT"]["aws_access_key_id"]
+secret_key =config["DEFAULT"]["aws_secret_access_key"]
+token = config["DEFAULT"]["aws_session_token"]
 
 client = boto3.client(
     's3',
@@ -15,6 +15,7 @@ client = boto3.client(
     aws_session_token=token
 )
 
-for bucket in client.buckets.all():
-    print(bucket.name)
+# for bucket in client.list_buckets():
+#     print(bucket)
+
 
