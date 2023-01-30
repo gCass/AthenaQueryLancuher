@@ -62,7 +62,7 @@ def prepareQueriesToLaunch(config, decomment_first_line = False):
 
         if decomment_first_line:
             # Rimuove i primi 2 dash di commento che sono nella prima riga di ogni file
-            query_format_1 = query_format_1.replace("--","",1)            
+            query_format_1 = query_format_1.replace("--","",1).replace("--dropstore","--dropstore;",1)            
 
         queries_to_launch[query_file] = query_format_1
 
