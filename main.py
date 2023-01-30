@@ -36,7 +36,7 @@ def get_query_results(client, execution_id):
     results = response['ResultSet']['Rows']
     return results
 
-def prepareQueriesToLaunch(config):
+def prepareQueriesToLaunch(config, decomment_first_line = False):
 
     # Parte uno: ricava la lista dei file contenenti le query
     file_with_list_of_query_to_launch = config['DEFAULT']['file_with_list_of_query_to_launch']
@@ -60,7 +60,12 @@ def prepareQueriesToLaunch(config):
         if "he_" in query_file:
             query_format_1 = query_format_1.replace("l3_rep_health.he_polizza", "l3_rep_health_temp.he_polizza_temp")
 
+        if decomment_first_line:
+            # Rimuove i primi 2 dash di commento che sono nella prima riga di ogni file
+            query_format_1 = query_format_1.replace("--","",1)            
+
         queries_to_launch[query_file] = query_format_1
+
 
     return queries_to_launch
 
