@@ -7,9 +7,9 @@ def printIfDebug(debugFlag, value):
     if debugFlag:
         print(value)
 
-def has_query_succeeded(client, execution_id):
-    state = "RUNNING"
-    max_execution = 5
+
+def has_query_succeeded(client, execution_id, max_execution = 30):
+    state = "RUNNING"    
 
     while max_execution > 0 and state in ["RUNNING", "QUEUED"]:
         max_execution -= 1
