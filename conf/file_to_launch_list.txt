@@ -1,2 +1,2 @@
-C:\Users\g.cassini\Desktop\Axa\launch_query_script\query_prova.sql
-C:\Users\g.cassini\Desktop\Axa\launch_query_script\query_prova2.sql
+C:\Users\g.cassini\Desktop\Axa\launch_query_script\test_query\query_prova.sql
+C:\Users\g.cassini\Desktop\Axa\launch_query_script\test_query\query_prova2.sql
