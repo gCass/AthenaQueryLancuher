@@ -1,0 +1,14 @@
+boto3==1.26.58
+botocore==1.29.58
+certifi @ file:///C:/b/abs_85o_6fm0se/croot/certifi_1671487778835/work/certifi
+jmespath==1.0.1
+mkl-fft==1.3.1
+mkl-random @ file:///C:/ci_310/mkl_random_1643050563308/work
+mkl-service==2.4.0
+numpy @ file:///C:/b/abs_datssh7cer/croot/numpy_and_numpy_base_1672336199388/work
+python-dateutil==2.8.2
+s3transfer==0.6.0
+scipy==1.9.3
+six @ file:///tmp/build/80754af9/six_1644875935023/work
+urllib3==1.26.14
+wincertstore==0.2

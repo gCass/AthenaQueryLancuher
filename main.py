@@ -9,7 +9,7 @@ def printIfDebug(value):
     if DEBUG_FLAG:
         print(value)
 
-def prepareQueriesToLaunch(config, decomment_first_line = False):
+def prepareQueriesToLaunch(config):
 
     # Parte uno: ricava la lista dei file contenenti le query
     file_with_list_of_query_to_launch = config['DEFAULT']['file_with_list_of_query_to_launch']
@@ -84,8 +84,6 @@ def get_existing_table_list(client, schema="l3_rep_research"):
     else:
         raise Exception(f"Was not possible to check available tables in the schema {schema}. \nStatus\n {status_reponse}")
 
-
-
     l = []
     for data in results:
         for data2 in data['Data']:
@@ -139,8 +137,8 @@ def execute_all_queries(client, queries_to_launch, debugPrint = False, time_to_w
 
         results[k] = result_i
         p = table_name
-        json_formatted_str = json.dumps(str(status_reponse), indent=2)
-        with open(f"results/{p}", "w") as f:
+        json_formatted_str = json.dumps(status_reponse, indent=2, default=str)
+        with open(f"results/{p}.json", "w") as f:
             f.write(json_formatted_str)
         
         printIfDebug("========\n\n\n")
@@ -152,7 +150,7 @@ if __name__ == "__main__":
     config.read('conf/conf.ini')
 
     # Ora per ogni query presente nel dict, lanciamola su athena con boto3
-    queries_to_launch = prepareQueriesToLaunch(config, decomment_first_line=True)
+    queries_to_launch = prepareQueriesToLaunch(config)
 
     athena_config = configparser.ConfigParser()
     athena_config.read('conf/aws_data.ini')
