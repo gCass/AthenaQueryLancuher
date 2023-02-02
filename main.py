@@ -2,6 +2,7 @@ import configparser
 import boto3
 import json
 import time
+import asyncio
 
 DEBUG_FLAG = True
 
@@ -39,7 +40,9 @@ def prepareQueriesToLaunch(config):
 
     return queries_to_launch
 
-def has_query_succeeded(client, execution_id, max_execution = 30, sleep_time = 30):
+# Dobbiamo tenerci tempistiche anche di 2 ore, quindi maxexecution deve essere 
+# pari 30 secondi * x volte = 2 ore = 180 minuti = 10800 secondi => x=360
+async def has_query_succeeded(client, execution_id, max_execution = 360, sleep_time = 30):
     state = "RUNNING"    
 
     while max_execution > 0 and state in ["RUNNING", "QUEUED"]:
@@ -55,7 +58,7 @@ def has_query_succeeded(client, execution_id, max_execution = 30, sleep_time = 3
                 return True, response
 
         # TODO: Le nostre query hanno un ordine di esecuzione di mezzora, oppure di ore,  
-        time.sleep(sleep_time)
+        await asyncio.sleep(sleep_time)
 
     return False, response
 
@@ -67,17 +70,17 @@ def get_query_results(client, execution_id):
     results = response['ResultSet']['Rows']
     return results
 
-def execute_query(client, query, sleep_time=30):
+async def execute_query(client, query, sleep_time=30):
     printIfDebug(query)
     response = client.start_query_execution(QueryString=query)
     query_exec_id = response["QueryExecutionId"]
-    query_status, status_reponse = has_query_succeeded(client, execution_id=query_exec_id, sleep_time=sleep_time)
+    query_status, status_reponse = await has_query_succeeded(client, execution_id=query_exec_id, sleep_time=sleep_time)
     return query_exec_id, query_status, status_reponse
 
-def get_existing_table_list(client, schema="l3_rep_research"):
+async def get_existing_table_list(client, schema="l3_rep_research"):
 
     existing_tables_query = f"SHOW TABLES IN  {schema}"
-    query_exec_id, query_status, status_reponse = execute_query(client, existing_tables_query, sleep_time=30)
+    query_exec_id, query_status, status_reponse = await execute_query(client, existing_tables_query, sleep_time=30)
     
     if query_status:
         results = get_query_results(client, query_exec_id)
@@ -98,51 +101,80 @@ def get_existing_table_list(client, schema="l3_rep_research"):
 def check_if_table_exists(table, table_list):
     return table in table_list
 
-def drop_the_table(client, table):
+async def drop_the_table(client, table):
     drop_query = f"drop table l3_rep_research.{table}  --dropstore"
-    query_exec_id, query_status, status_reponse = execute_query(client, drop_query)
+    query_exec_id, query_status, status_reponse = await execute_query(client, drop_query)
     if query_status:
         result_i = "success"
     else:
         result_i = f"failure.\n {status_reponse['QueryExecution']['Status']['StateChangeReason']}"
     printIfDebug(f"Drop table {table} result: {result_i}")
 
+async def query_iteration(client, query, table_name, table_list, time_to_wait_after_droptable_in_ms=30):
+    # query = queries_to_launch[table_name]
+    # table_name = k
+    printIfDebug(table_name)
+    if check_if_table_exists(table_name,table_list):
+        await drop_the_table(client, table_name)
+        printIfDebug(f"Wait {time_to_wait_after_droptable_in_ms} ms before recreating the table {table_name}")
+        await asyncio.sleep(time_to_wait_after_droptable_in_ms)
+        printIfDebug(f"Waited {time_to_wait_after_droptable_in_ms} ms before recreating the table {table_name}")
+
+    query_exec_id, query_status, status_reponse = await execute_query(client, query)
+
+    printIfDebug(f"Query id {query_exec_id}")
+
+    if query_status:
+        result_i = "success"
+    else:
+        result_i = f"failure.\n {status_reponse['QueryExecution']['Status']['StateChangeReason']}"
+    
+    printIfDebug(f"Result: {result_i}")
+
+    
+    p = table_name
+    json_formatted_str = json.dumps(status_reponse, indent=2, default=str)
+    with open(f"results/{p}.json", "w") as f:
+        f.write(json_formatted_str)
+    
+    printIfDebug("========\n\n\n")
+    # i += 1
+    return result_i
 
 
-def execute_all_queries(client, queries_to_launch, debugPrint = False, time_to_wait_after_droptable_in_ms = 30):
+async def execute_all_queries(clientGen, queries_to_launch, debugPrint = False, time_to_wait_after_droptable_in_ms = 30):
     results = {}
-    i = 0
-
-    table_list = get_existing_table_list(client)
-
-    for k in queries_to_launch:
-        query = queries_to_launch[k]
-        table_name = k
-        printIfDebug(table_name)
-        if check_if_table_exists(table_name,table_list):
-            drop_the_table(client, table_name)
-            time.sleep(time_to_wait_after_droptable_in_ms)
-            printIfDebug(f"Wait {time_to_wait_after_droptable_in_ms} ms before recreating the table ")
-
-        query_exec_id, query_status, status_reponse = execute_query(client, query)
-
-        printIfDebug(f"Query id {query_exec_id}")
-
-        if query_status:
-            result_i = "success"
-        else:
-            result_i = f"failure.\n {status_reponse['QueryExecution']['Status']['StateChangeReason']}"
+    # i = 0
+    client = clientGen.getNewClient()
+    table_list = await get_existing_table_list(client)
+    tasks = []
+    for table_name in queries_to_launch:
+        query = queries_to_launch[table_name]
+        client = clientGen.getNewClient()
+        tasks.append(
+            query_iteration(
+                client, query, table_name, table_list,
+                time_to_wait_after_droptable_in_ms=time_to_wait_after_droptable_in_ms 
+            )
+        )
+    await asyncio.gather(*tasks)
         
-        printIfDebug(f"Result: {result_i}")
+class ClientGenerator:
 
-        results[k] = result_i
-        p = table_name
-        json_formatted_str = json.dumps(status_reponse, indent=2, default=str)
-        with open(f"results/{p}.json", "w") as f:
-            f.write(json_formatted_str)
+    def __init__(self, access_key, secret_key, token) -> None:
+        self.access_key = access_key
+        self.secret_key = secret_key
+        self.token = token
+    
+    def getNewClient(self):
+        return boto3.client(
+            'athena',
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            aws_session_token=token
+         )
         
-        printIfDebug("========\n\n\n")
-        i += 1
+
 
 if __name__ == "__main__":
 
@@ -160,14 +192,13 @@ if __name__ == "__main__":
     secret_key = athena_config["DEFAULT"]["aws_secret_access_key"]
     token = athena_config["DEFAULT"]["aws_session_token"]
 
-    client = boto3.client(
-        'athena',
-        aws_access_key_id=access_key,
-        aws_secret_access_key=secret_key,
-        aws_session_token=token
+    clientGen = ClientGenerator(
+        access_key,
+        secret_key,
+        token
     )
-
-    execute_all_queries(client, queries_to_launch)
+    asyncio.run(execute_all_queries(clientGen, queries_to_launch))
+    
 
     
 # print(results)
