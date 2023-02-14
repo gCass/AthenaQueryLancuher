@@ -71,8 +71,13 @@ def get_query_results(client, execution_id):
     return results
 
 async def execute_query(client, query, sleep_time=30):
-    printIfDebug(query)
-    response = client.start_query_execution(QueryString=query)
+    # printIfDebug(query)
+    try:
+        response = client.start_query_execution(QueryString=query)
+    except Exception:
+        print(query)
+        raise Exception(f"The query\n\n {query} \n\n raised an exception")
+
     query_exec_id = response["QueryExecutionId"]
     query_status, status_reponse = await has_query_succeeded(client, execution_id=query_exec_id, sleep_time=sleep_time)
     return query_exec_id, query_status, status_reponse
@@ -99,7 +104,7 @@ async def get_existing_table_list(client, schema="l3_rep_research"):
     # return existing_table_list
 
 def check_if_table_exists(table, table_list):
-    return table in table_list
+    return table.lower() in table_list or table.upper() in table_list or table in table_list 
 
 async def drop_the_table(client, table):
     drop_query = f"drop table l3_rep_research.{table}  --dropstore"
@@ -110,7 +115,7 @@ async def drop_the_table(client, table):
         result_i = f"failure.\n {status_reponse['QueryExecution']['Status']['StateChangeReason']}"
     printIfDebug(f"Drop table {table} result: {result_i}")
 
-async def query_iteration(client, query, table_name, table_list, time_to_wait_after_droptable_in_ms=30):
+async def query_iteration(client, query, table_name, table_list, time_to_wait_after_droptable_in_ms=60):
     # query = queries_to_launch[table_name]
     # table_name = k
     printIfDebug(table_name)
@@ -129,7 +134,7 @@ async def query_iteration(client, query, table_name, table_list, time_to_wait_af
     else:
         result_i = f"failure.\n {status_reponse['QueryExecution']['Status']['StateChangeReason']}"
     
-    printIfDebug(f"Result: {result_i}")
+    printIfDebug(f"Result of {table_name}: {result_i}")
 
     
     p = table_name
@@ -142,11 +147,12 @@ async def query_iteration(client, query, table_name, table_list, time_to_wait_af
     return result_i
 
 
-async def execute_all_queries(clientGen, queries_to_launch, debugPrint = False, time_to_wait_after_droptable_in_ms = 30):
+async def execute_all_queries(clientGen, queries_to_launch, debugPrint = False, time_to_wait_after_droptable_in_ms = 60):
     results = {}
     # i = 0
     client = clientGen.getNewClient()
     table_list = await get_existing_table_list(client)
+    print(f"Existing tables\n\n{table_list}")
     tasks = []
     for table_name in queries_to_launch:
         query = queries_to_launch[table_name]
