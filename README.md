@@ -8,6 +8,9 @@ Esistono due versioni dello script:
 1) Sincrona: le query vengono eseguite in sequenza come specificate nel file di configurazione. Corrisponde al branch master.
 2) Asincrona: le query vengono eseguite tutte in parallelo
 
+Le librerie da installare sono:
+- boto3
+
 ## Funzionamento
 Lo script è composto dai seguenti step:
 1) Lettura di un file di configurazione presente nel percorso conf/conf.ini. In questo file sono specificati 2 parametri.  
@@ -24,5 +27,7 @@ Lo script è composto dai seguenti step:
 Se in modalità asincrona i punti 3 e 4 vengono eseguiti in parallelo per ogni query. Altrimenti vengono ripetuti per ogni query in sequenza.
 
 ## Esecuzione
-
+Il codice per ora funziona solo su Windows.  
+```
 python main.py
+```
